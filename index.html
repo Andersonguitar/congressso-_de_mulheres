@@ -76,16 +76,28 @@
             color: #666;
             font-size: 18px;
         }
-        .inscrito-foto {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            background-color: #ddd;
+        .inscrito-info {
+            flex-grow: 1;
         }
         .inscrito-nome {
-            flex-grow: 1;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .inscrito-igreja {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+            display: block;
+        }
+        .inscrito-lote {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007BFF;
+            margin-left: auto;
+            padding: 5px 10px;
+            background-color: #e9f5ff;
+            border-radius: 4px;
         }
         h1 {
             color: #333;
@@ -110,28 +122,49 @@
     </div>
 
     <script>
-        // Substitua estes valores pelos seus
         const FORM_ID = '1fcgf1jYDFnjWaVl0pSdy3S7zS-Vhq78UrVEgSU8zkXs';
         const API_KEY = 'AIzaSyDMGrCp3okYV5Jb4iQS0fRmUStLSHAvrAg';
 
-        // Função para carregar os dados do formulário
+        // --- FUNÇÃO PARA DETERMINAR O LOTE (AJUSTADA PARA O FORMATO DA PLANILHA) ---
+        function determinarLote(dataString) {
+            // Se não houver data, retorna 'Data Inválida'
+            if (!dataString) {
+                return 'Data Inválida';
+            }
+
+            // A data da planilha vem como "dd/mm/aaaa hh:mm:ss"
+            // Extrai apenas a parte da data "dd/mm/aaaa"
+            const dataApenas = dataString.split(' ')[0];
+            const [dia, mes, ano] = dataApenas.split('/').map(Number);
+            
+            // Converte para um formato que o JavaScript entende: "mm/dd/aaaa"
+            const dataInscricao = new Date(`${mes}/${dia}/${ano}`);
+
+            // Defina as datas dos lotes usando o mesmo formato
+            const lote1Inicio = new Date('08/31/2025');
+            const lote1Fim = new Date('09/22/2025');
+            
+            const lote2Inicio = new Date('09/23/2025');
+            const lote2Fim = new Date('10/08/2025');
+            
+            const lote3Inicio = new Date('10/09/2025');
+            const lote3Fim = new Date('10/25/2025');
+
+            // Lógica de comparação de datas
+            if (dataInscricao >= lote1Inicio && dataInscricao <= lote1Fim) {
+                return '1º Lote';
+            } else if (dataInscricao >= lote2Inicio && dataInscricao <= lote2Fim) {
+                return '2º Lote';
+            } else if (dataInscricao >= lote3Inicio && dataInscricao <= lote3Fim) {
+                return '3º Lote';
+            } else {
+                return 'Fora do Prazo';
+            }
+        }
+        // --- FIM DA FUNÇÃO ---
+
         async function carregarInscritos() {
             try {
-                // Primeiro, buscar os metadados do formulário
-                const formResponse = await fetch(
-                    `https://forms.googleapis.com/v1/forms/${FORM_ID}?key=${API_KEY}`
-                );
-                
-                if (formResponse.ok) {
-                    const formData = await formResponse.json();
-                    if (formData.coverImage && formData.coverImage.sourceUri) {
-                        const formImage = document.getElementById('formImage');
-                        formImage.src = formData.coverImage.sourceUri;
-                        formImage.style.display = 'block';
-                    }
-                }
-
-                // Buscar dados da planilha
                 const response = await fetch(
                     `https://sheets.googleapis.com/v4/spreadsheets/${FORM_ID}?key=${API_KEY}`
                 );
@@ -144,7 +177,6 @@
                 const formTitle = sheetData.properties.title || 'Lista de Inscritos';
                 document.getElementById('formTitle').textContent = `Lista de Inscritos - ${formTitle}`;
 
-                // Buscar os dados da planilha
                 const valuesResponse = await fetch(
                     `https://sheets.googleapis.com/v4/spreadsheets/${FORM_ID}/values/A:Z?key=${API_KEY}`
                 );
@@ -159,7 +191,6 @@
                     throw new Error('Nenhum dado encontrado na planilha');
                 }
                 
-                // Remove o cabeçalho e ordena alfabeticamente pela coluna B
                 const inscritos = data.values.slice(1).sort((a, b) => a[1].localeCompare(b[1]));
                 
                 exibirInscritos(inscritos);
@@ -170,7 +201,6 @@
             }
         }
 
-        // Função para salvar o estado das presenças
         function salvarPresencas() {
             const presencas = {};
             const items = document.getElementsByClassName('inscrito-item');
@@ -180,7 +210,6 @@
             localStorage.setItem('presencas', JSON.stringify(presencas));
         }
 
-        // Função para carregar o estado das presenças
         function carregarPresencas() {
             const presencasString = localStorage.getItem('presencas');
             if (presencasString) {
@@ -198,11 +227,9 @@
             }
         }
 
-        // Função para exibir os inscritos na página
         function exibirInscritos(inscritos) {
             const listaElement = document.getElementById('inscritosList');
             const totalElement = document.getElementById('totalInscritos');
-            const totalPresentesElement = document.getElementById('totalPresentes');
             listaElement.innerHTML = '';
             
             totalElement.textContent = `Total de Inscritos: ${inscritos.length}`;
@@ -211,38 +238,41 @@
                 const li = document.createElement('li');
                 li.className = 'inscrito-item';
 
-                const fotoUrl = inscrito[2] || '';
-                const fotoElement = document.createElement('img');
-                fotoElement.className = 'inscrito-foto';
-                fotoElement.src = fotoUrl || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiI+PC9wYXRoPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIgLz48L3N2Zz4=';
-                fotoElement.onerror = () => {
-                    fotoElement.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiI+PC9wYXRoPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIgLz48L3N2Zz4=';
-                };
+                const infoElement = document.createElement('div');
+                infoElement.className = 'inscrito-info';
 
                 const nomeElement = document.createElement('div');
                 nomeElement.className = 'inscrito-nome';
                 nomeElement.textContent = inscrito[1];
+                infoElement.appendChild(nomeElement);
 
-                li.appendChild(fotoElement);
-                li.appendChild(nomeElement);
+                const igrejaElement = document.createElement('span');
+                igrejaElement.className = 'inscrito-igreja';
+                igrejaElement.textContent = inscrito[2] || 'Igreja não informada';
+                infoElement.appendChild(igrejaElement);
+                
+                const loteElement = document.createElement('span');
+                loteElement.className = 'inscrito-lote';
+                loteElement.textContent = determinarLote(inscrito[0]);
+                
+                li.appendChild(infoElement);
+                li.appendChild(loteElement);
 
                 li.addEventListener('click', () => {
                     li.classList.toggle('presente');
                     atualizarContadorPresentes();
-                    salvarPresencas(); // Salva o estado quando houver alteração
+                    salvarPresencas();
                 });
 
                 listaElement.appendChild(li);
             });
 
-            carregarPresencas(); // Carrega o estado das presenças após exibir a lista
+            carregarPresencas();
         }
 
-        // Função para atualizar periodicamente
         function iniciarAtualizacaoAutomatica() {
             carregarInscritos();
             
-            // Atualiza a cada 30 segundos
             setInterval(() => {
                 const presencasAtuais = {};
                 const items = document.getElementsByClassName('inscrito-item');
@@ -252,7 +282,6 @@
                 });
 
                 carregarInscritos().then(() => {
-                    // Restaura o estado das presenças após carregar a nova lista
                     const items = document.getElementsByClassName('inscrito-item');
                     Array.from(items).forEach(item => {
                         const nome = item.querySelector('.inscrito-nome').textContent;
@@ -265,121 +294,23 @@
             }, 30000);
         }
 
-        // Função para carregar os dados do formulário
-        async function carregarInscritos() {
-            try {
-                // Salva o estado atual das presenças antes de atualizar
-                const presencasAtuais = {};
-                const items = document.getElementsByClassName('inscrito-item');
-                Array.from(items).forEach(item => {
-                    const nome = item.querySelector('.inscrito-nome').textContent;
-                    presencasAtuais[nome] = item.classList.contains('presente');
-                });
-
-                // Buscar dados da planilha
-                const response = await fetch(
-                    `https://sheets.googleapis.com/v4/spreadsheets/${FORM_ID}?key=${API_KEY}`
-                );
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const sheetData = await response.json();
-                const formTitle = sheetData.properties.title || 'Lista de Inscritos';
-                document.getElementById('formTitle').textContent = `Lista de Inscritos - ${formTitle}`;
-
-                // Buscar os dados da planilha
-                const valuesResponse = await fetch(
-                    `https://sheets.googleapis.com/v4/spreadsheets/${FORM_ID}/values/A:Z?key=${API_KEY}`
-                );
-                
-                if (!valuesResponse.ok) {
-                    throw new Error(`HTTP error! status: ${valuesResponse.status}`);
-                }
-                
-                const data = await valuesResponse.json();
-                
-                if (!data.values || data.values.length <= 1) {
-                    throw new Error('Nenhum dado encontrado na planilha');
-                }
-                
-                // Remove o cabeçalho e ordena alfabeticamente pela coluna B
-                const inscritos = data.values.slice(1).sort((a, b) => a[1].localeCompare(b[1]));
-                
-                exibirInscritos(inscritos);
-            } catch (error) {
-                console.error('Erro ao carregar dados:', error);
-                document.getElementById('inscritosList').innerHTML = 
-                    `<li class="inscrito-item">Erro ao carregar a lista de inscritos: ${error.message}</li>`;
-            }
-        }
-
-        // Inicia a atualização automática quando a página carregar
-        window.onload = iniciarAtualizacaoAutomatica;
-
-        // Função para exibir os inscritos na página
-        function exibirInscritos(inscritos) {
-            const listaElement = document.getElementById('inscritosList');
-            const totalElement = document.getElementById('totalInscritos');
-            const totalPresentesElement = document.getElementById('totalPresentes');
-            listaElement.innerHTML = '';
-            
-            // Atualiza o total de inscritos
-            totalElement.textContent = `Total de Inscritos: ${inscritos.length}`;
-
-            inscritos.forEach(inscrito => {
-                const li = document.createElement('li');
-                li.className = 'inscrito-item';
-
-                // Adiciona a foto se existir (assumindo que está na coluna C)
-                const fotoUrl = inscrito[2] || '';
-                const fotoElement = document.createElement('img');
-                fotoElement.className = 'inscrito-foto';
-                fotoElement.src = fotoUrl || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiI+PC9wYXRoPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIgLz48L3N2Zz4=';
-                fotoElement.onerror = () => {
-                    fotoElement.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiI+PC9wYXRoPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIgLz48L3N2Zz4=';
-                };
-
-                const nomeElement = document.createElement('div');
-                nomeElement.className = 'inscrito-nome';
-                nomeElement.textContent = inscrito[1];
-
-                li.appendChild(fotoElement);
-                li.appendChild(nomeElement);
-
-                // Adiciona evento de clique para marcar presença
-                li.addEventListener('click', () => {
-                    li.classList.toggle('presente');
-                    atualizarContadorPresentes();
-                });
-
-                listaElement.appendChild(li);
-            });
-        }
-
-        // Função para atualizar o contador de presentes
         function atualizarContadorPresentes() {
             const presentes = document.getElementsByClassName('presente').length;
             document.getElementById('totalPresentes').textContent = `Presentes: ${presentes}`;
         }
 
-        // Função para filtrar inscritos
         function filtrarInscritos() {
             const searchText = document.getElementById('searchInput').value.toLowerCase();
             const items = document.getElementsByClassName('inscrito-item');
 
             Array.from(items).forEach(item => {
-                const textoInscrito = item.querySelector('.inscrito-nome').textContent.toLowerCase();
+                const textoInscrito = item.querySelector('.inscrito-nome').textContent.toLowerCase() + ' ' + (item.querySelector('.inscrito-igreja')?.textContent.toLowerCase() || '') + ' ' + (item.querySelector('.inscrito-lote')?.textContent.toLowerCase() || '');
                 item.style.display = textoInscrito.includes(searchText) ? '' : 'none';
             });
         }
 
-        // Adiciona evento de busca
         document.getElementById('searchInput').addEventListener('input', filtrarInscritos);
-
-        // Carrega os dados quando a página é aberta
-        carregarInscritos();
+        window.onload = iniciarAtualizacaoAutomatica;
     </script>
 </body>
 </html>
